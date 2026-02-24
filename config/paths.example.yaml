@@ -1,0 +1,9 @@
+# Where your large Accounting data tree lives.
+# Example: /home/matias/RAG_Sync/Accounting
+data_root: "/ABS/PATH/TO/Accounting"
+
+# Relative to data_root:
+inbox_rel: "1_Input_Raw/00_inbox"
+moved_rel: "moved"
+analysis_rel: "4_Analysis_Workflows"
+artifacts_rel: "artifacts"
