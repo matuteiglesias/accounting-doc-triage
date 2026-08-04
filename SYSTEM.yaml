@@ -1,0 +1,39 @@
+# This file declares the repository boundary and its place in the GitHub estate.
+schema_version: 1
+id: acct.intake.documents
+repository:
+  id: repo.accounting-doc-triage
+  github: matuteiglesias/accounting-doc-triage
+domain: accounting
+system: acct.intake
+role: document-intake-adapter
+lifecycle: active
+authority:
+  status: proposed
+  owns:
+  - accounting document intake and triage outputs
+  - candidate document metadata and provenance
+  does_not_own:
+  - canonical ledger semantics
+  - professional reporting calculations
+  - viewer presentation
+interfaces:
+  consumes: []
+  produces:
+  - artifact:acct.document-candidate@1
+upstream: []
+downstream:
+- repo.accounting-workflows
+canonical_commands: []
+generated_paths:
+- out/
+- runs/
+verification:
+  status: metadata-only
+  last_verified: '2026-08-04'
+  command: null
+  unknowns:
+  - canonical triage command and external data-root contract require local confirmation
+maintenance:
+  cadence: quarterly
+  next_review: '2026-11-01'
