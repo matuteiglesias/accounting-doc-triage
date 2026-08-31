@@ -1,28 +1,43 @@
-# accounting_doc_triage
+# accounting-doc-triage
 
-Small, relocatable engine for triaging accounting PDFs (payments and statements) using PromptFlow, then moving files and generating digest outputs.
+Bounded accounting-document intake and evidence preparation.
 
-This repo contains only the engine:
-- flows (PromptFlow graphs, prompts, schemas)
-- scripts (index, run cycle, mover, digests)
-- docs/runbook.md
+This repository turns unclassified accounting documents into safely captured evidence, structured parsing derivatives, accounting-specific observations, and reviewable transaction-evidence candidates. Canonical ledger/accounting truth remains in [`accounting-workflows`](https://github.com/matuteiglesias/accounting-workflows).
 
-It does NOT contain:
-- raw PDFs
-- moved/quarantine stores
-- backups
-- PromptFlow run artifacts
+## Current boundary
 
-Those live in an external "data root" directory (typically your Accounting folder).
+```text
+accounting PDF / PNG / JPEG
+        ↓
+safe content-addressed custody
+        ↓
+Docling structured conversion
+        ↓
+accounting-specific interpretation
+        ↓
+reviewable transaction evidence
+        ↓
+accounting-workflows
+```
 
-## Quick start
+The repository contains only code, synthetic tests, configuration examples, and run evidence. Real accounting documents, evidence stores, parser derivatives, quarantine state, and private review artifacts live under an external data root.
 
-1) Create a config file:
-   cp config/paths.example.yaml config/paths.yaml
+## Important lifecycle note
 
-2) Edit config/paths.yaml to point to your Accounting data root.
+The historical PromptFlow payment/statement/general flow directories advertised by older docs are no longer present on current `main`. They are not restored by the current migration. Useful accounting semantics are being retained while PromptFlow-specific orchestration and duplicated low-level PDF parsing are retired.
 
-3) Run a dry cycle:
-   bash scripts/run_triage_cycle_general.sh --flow flows/payment --apply=0 --backup=0
+See [`docs/CAPABILITY_LEDGER.md`](docs/CAPABILITY_LEDGER.md) for the explicit legacy disposition.
 
-See docs/runbook.md for details.
+## Development
+
+```bash
+python -m pytest
+```
+
+Install the optional Docling parsing substrate when exercising real conversion:
+
+```bash
+pip install -e '.[docling]'
+```
+
+Real-file movement or conversion is never required for ordinary tests.

@@ -6,34 +6,44 @@ repository:
   github: matuteiglesias/accounting-doc-triage
 domain: accounting
 system: acct.intake
-role: document-intake-adapter
+role: accounting-evidence-intake
 lifecycle: active
 authority:
   status: proposed
   owns:
-  - accounting document intake and triage outputs
-  - candidate document metadata and provenance
+  - accounting document intake and safe evidence custody
+  - content identity and parser/run provenance
+  - accounting-document observations and review candidates
+  - approved transaction-evidence relation production
   does_not_own:
-  - canonical ledger semantics
+  - canonical ledger semantics or transaction identity
+  - accounting facts created merely from document extraction
   - professional reporting calculations
-  - viewer presentation
+  - generic estate-wide document ingestion
+  - repository health
+  - viewer presentation or private-evidence publication policy
 interfaces:
   consumes: []
   produces:
   - artifact:acct.document-candidate@1
+  - artifact:acct.transaction-evidence@1
 upstream: []
 downstream:
 - repo.accounting-workflows
-canonical_commands: []
+canonical_commands:
+- python -m pytest
+- python -m accounting_doc_triage.cli --help
 generated_paths:
 - out/
 - runs/
 verification:
-  status: metadata-only
-  last_verified: '2026-08-04'
-  command: null
+  status: partial
+  last_verified: '2026-08-30'
+  command: python -m pytest
   unknowns:
-  - canonical triage command and external data-root contract require local confirmation
+  - real Docling conversion requires the optional docling dependency and local model/runtime availability
+  - live external data-root mutation requires an explicit execution packet and is not exercised by repository tests
+  - transaction-evidence matching remains candidate/review state until explicitly approved
 maintenance:
   cadence: quarterly
   next_review: '2026-11-01'
