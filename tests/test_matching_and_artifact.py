@@ -11,7 +11,7 @@ from accounting_doc_triage.evidence_artifact import (
     apply_review_decisions,
     write_transaction_evidence_artifact,
 )
-from accounting_doc_triage.intake.custody import EvidenceRecord
+from accounting_doc_triage.intake.custody import EvidenceRecord, sha256_file
 from accounting_doc_triage.interpretation.model import AccountingDocumentObservation
 from accounting_doc_triage.matching import MatchConfig, candidate_matches
 
@@ -113,7 +113,9 @@ def test_ambiguous_same_amount_date_is_preserved_for_human_review() -> None:
         ],
         ignore_index=True,
     )
-    candidates = candidate_matches(_observation(), ledger, config=MatchConfig(date_window_days=2))
+    candidates = candidate_matches(
+        _observation(), ledger, config=MatchConfig(date_window_days=2)
+    )
     assert len(candidates) == 2
     assert set(candidates["match_status"]) == {"ambiguous_candidate"}
 
@@ -146,7 +148,7 @@ def test_approved_relation_materializes_contract_consumed_by_accounting_workflow
     source = tmp_path / "private" / "proof.pdf"
     source.parent.mkdir()
     source.write_bytes(b"synthetic proof")
-    evidence_id = "a" * 64
+    evidence_id = sha256_file(source)
     record = EvidenceRecord(
         evidence_id=evidence_id,
         content_sha256=evidence_id,
