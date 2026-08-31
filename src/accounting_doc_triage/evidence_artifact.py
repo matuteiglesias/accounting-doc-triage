@@ -2,7 +2,6 @@ from __future__ import annotations
 
 """Review decisions and producer-owned `acct.transaction-evidence@1` artifact output."""
 
-from dataclasses import asdict
 import hashlib
 import json
 from pathlib import Path
@@ -86,9 +85,9 @@ def apply_review_decisions(
                 raise EvidenceArtifactError(
                     f"review decision does not resolve an existing candidate: {key!r}"
                 )
-            mask = True
+            mask = pd.Series(True, index=base.index)
             for column, value in zip(key_columns, key):
-                mask = mask & (base[column].astype(str) == value)
+                mask &= base[column].astype(str) == value
             base.loc[mask, "status"] = str(decision["decision"])
 
     return base[["tx_id", "evidence_id", "relation", "status"]].sort_values(
@@ -148,6 +147,15 @@ def write_transaction_evidence_artifact(
     for evidence_id in sorted(referenced):
         record = record_map[evidence_id]
         canonical = Path(record.canonical_path).expanduser().resolve()
+        if not canonical.is_file():
+            raise EvidenceArtifactError(
+                f"canonical evidence is unavailable; refusing dangling href: {canonical}"
+            )
+        actual_sha = _sha256(canonical)
+        if actual_sha != record.content_sha256:
+            raise EvidenceArtifactError(
+                f"canonical evidence hash mismatch for {evidence_id}: {actual_sha}"
+            )
         documents_rows.append(
             {
                 "evidence_id": evidence_id,
