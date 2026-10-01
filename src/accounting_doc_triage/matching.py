@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date
+from decimal import Decimal, InvalidOperation
 from typing import Iterable
 
 import pandas as pd
@@ -14,13 +15,17 @@ from accounting_doc_triage.interpretation.model import AccountingDocumentObserva
 @dataclass(frozen=True, slots=True)
 class MatchConfig:
     date_window_days: int = 3
-    amount_tolerance: float = 0.01
+    amount_tolerance: Decimal | float = Decimal("0.01")
 
     def __post_init__(self) -> None:
         if self.date_window_days < 0:
             raise ValueError("date_window_days must be non-negative")
         if self.amount_tolerance < 0:
             raise ValueError("amount_tolerance must be non-negative")
+        try:
+            object.__setattr__(self, "amount_tolerance", Decimal(str(self.amount_tolerance)))
+        except (InvalidOperation, ValueError) as exc:
+            raise ValueError("amount_tolerance must be a decimal-compatible value") from exc
 
 
 _REQUIRED_LEDGER_COLUMNS = ("tx_id", "Date", "amount", "Currency")
@@ -86,10 +91,11 @@ def candidate_matches(
         if currency != observation.currency.upper():
             continue
         try:
-            ledger_amount = float(row["amount"])
-        except (TypeError, ValueError):
+            ledger_amount = Decimal(str(row["amount"]).strip())
+            observed_amount = Decimal(str(observation.amount))
+        except (TypeError, ValueError, InvalidOperation):
             continue
-        amount_delta = abs(abs(ledger_amount) - abs(float(observation.amount)))
+        amount_delta = abs(abs(ledger_amount) - abs(observed_amount))
         if amount_delta > config.amount_tolerance:
             continue
         try:
@@ -107,7 +113,7 @@ def candidate_matches(
                 "candidate_tx_id": tx_id,
                 "relation": relation,
                 "match_status": "candidate",
-                "amount_delta": round(amount_delta, 2),
+                "amount_delta": float(amount_delta.quantize(Decimal("0.01"))),
                 "date_delta_days": date_delta,
                 "match_reasons": ";".join(reasons),
             }

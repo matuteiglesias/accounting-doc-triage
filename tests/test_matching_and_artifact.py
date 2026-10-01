@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from decimal import Decimal
 from pathlib import Path
 
 import pandas as pd
@@ -14,6 +15,7 @@ from accounting_doc_triage.evidence_artifact import (
 from accounting_doc_triage.intake.custody import EvidenceRecord, sha256_file
 from accounting_doc_triage.interpretation.model import AccountingDocumentObservation
 from accounting_doc_triage.matching import MatchConfig, candidate_matches
+from scripts.run_evidence_campaign import field_amount, observation
 
 
 def _observation(**overrides) -> AccountingDocumentObservation:
@@ -193,3 +195,69 @@ def test_approved_relation_materializes_contract_consumed_by_accounting_workflow
     assert manifest["approved_relations"] == 1
     assert manifest["accounting_truth_created"] is False
     assert manifest["private_evidence_publication_implied"] is False
+
+
+def test_configurable_ars_tolerance_is_inclusive_at_ten_and_rejects_ten_point_zero_one() -> None:
+    inclusive = candidate_matches(
+        _observation(amount=100.00),
+        pd.DataFrame([{"tx_id": "tx", "Date": "2026-04-14", "amount": 110.00, "Currency": "ARS"}]),
+        config=MatchConfig(date_window_days=3, amount_tolerance=Decimal("10.00")),
+    )
+    rejected = candidate_matches(
+        _observation(amount=100.00),
+        pd.DataFrame([{"tx_id": "tx", "Date": "2026-04-14", "amount": 110.01, "Currency": "ARS"}]),
+        config=MatchConfig(date_window_days=3, amount_tolerance=Decimal("10.00")),
+    )
+    assert len(inclusive) == 1
+    assert rejected.empty
+
+
+def test_usd_keeps_strict_configured_tolerance() -> None:
+    observation = _observation(currency="USD", amount=100.00)
+    exact = candidate_matches(
+        observation,
+        pd.DataFrame([{"tx_id": "tx", "Date": "2026-04-14", "amount": 100.01, "Currency": "USD"}]),
+        config=MatchConfig(amount_tolerance=Decimal("0.01")),
+    )
+    over = candidate_matches(
+        observation,
+        pd.DataFrame([{"tx_id": "tx", "Date": "2026-04-14", "amount": 100.02, "Currency": "USD"}]),
+        config=MatchConfig(amount_tolerance=Decimal("0.01")),
+    )
+    assert len(exact) == 1
+    assert over.empty
+
+
+def test_two_complementary_documents_and_one_shared_document_are_valid_many_to_many() -> None:
+    shared = "c" * 64
+    complementary = pd.DataFrame(
+        [
+            {"tx_id": "tx-a", "evidence_id": shared, "relation": "transfer_proof", "status": "approved"},
+            {"tx_id": "tx-a", "evidence_id": "d" * 64, "relation": "payment_proof", "status": "approved"},
+            {"tx_id": "tx-b", "evidence_id": shared, "relation": "transfer_proof", "status": "approved"},
+        ]
+    )
+    assert len(complementary) == 3
+    assert complementary.groupby("evidence_id").size().to_dict()[shared] == 2
+    assert complementary.groupby("tx_id").size().to_dict()["tx-a"] == 2
+
+
+def test_filename_timestamp_is_not_treated_as_amount_and_rent_is_not_payment_proof() -> None:
+    amount, _, _ = field_amount("Detalle de operación\nCreada el 7 de octubre - 15:57 hs")
+    assert amount is None
+    rent = observation(
+        Path("2025_01_01_50000_cobros_renta.pdf"),
+        "e" * 64,
+        "Transferencia recibida por cobro de renta. Importe $ 50.000,00",
+    )
+    assert rent["document_kind"] not in {"payment_proof", "transfer_proof"}
+
+
+def test_persisted_review_decision_is_idempotent() -> None:
+    candidates = candidate_matches(_observation(), _ledger())
+    decisions = pd.DataFrame(
+        [{"evidence_id": "a" * 64, "candidate_tx_id": "tx-right", "relation": "payment_proof", "decision": "approved"}]
+    )
+    first = apply_review_decisions(candidates, decisions)
+    second = apply_review_decisions(candidates, decisions)
+    pd.testing.assert_frame_equal(first, second)
