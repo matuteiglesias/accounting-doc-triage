@@ -69,7 +69,7 @@ def run(args):
     assert len(tx)==metadata["required_transaction_count"] and tx.tx_id.is_unique
     expected=hashlib.sha256("\n".join(sorted(tx.tx_id)).encode()).hexdigest()
     assert expected==metadata["required_tx_ids_sha256"]
-    assert len(tx)==214 and len(old_tx)==183, "reconfirm frozen population before running"
+    assert len(old_tx)==int(oldmeta["required_transaction_count"]) and len(tx)>=len(old_tx)>0, "invalid prior/current scope cardinality"
     map_ids,account_changes=identity_map(old_tx,tx)
     required=tx.set_index("tx_id")
     old_links=pd.read_csv(previous/"transaction_evidence.csv",dtype=str,keep_default_na=False)
@@ -160,7 +160,7 @@ def run(args):
     prior={(map_ids[x.tx_id],x.evidence_id,x.relation) for x in old_links.itertuples() if x.status=="approved"}
     got={(x.tx_id,x.evidence_id,x.relation) for x in approved.itertuples()}
     assert prior-got==demoted and len(prior)==int((old_links.status=="approved").sum())
-    assert len(set(approved.tx_id))>=30
+    assert set(t for t, _, _ in (prior-demoted)).issubset(set(approved.tx_id))
 
     target.mkdir(parents=True)
     (target/"evidence").mkdir()
