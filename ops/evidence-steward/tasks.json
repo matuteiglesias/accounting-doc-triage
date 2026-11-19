@@ -1,0 +1,268 @@
+{
+  "schema": "accounting.evidence-steward.queue.v1",
+  "status": "design_only",
+  "dispatch_enabled": false,
+  "runner": "NOT_CONFIGURED",
+  "task_wip_limit": 1,
+  "pr_review_wip_limit": 1,
+  "selection_policy": "Choose the smallest unblocked testable improvement in the current bottleneck; no task just to fill cadence.",
+  "default_sandbox": "code_and_synthetic_fixtures_only",
+  "tasks": [
+    {
+      "id": "EV-001",
+      "state": "READY_FOR_REVIEW",
+      "priority": 1,
+      "repo": "matuteiglesias/accounting-doc-triage",
+      "trigger": "First authorized engineering pilot or observed inability to reproduce the approved/candidate/missing frontier from fixture data.",
+      "goal": "Create a deterministic, fixture-safe frontier summary and review-queue contract over the existing transaction-evidence artifact. Do not run the historical live campaign.",
+      "files_to_inspect": [
+        "AGENTS.md",
+        "docs/runbook.md",
+        "SYSTEM.yaml",
+        "src/accounting_doc_triage/evidence_artifact.py",
+        "src/accounting_doc_triage/matching.py",
+        "scripts/run_evidence_campaign.py",
+        "tests/test_matching_and_artifact.py"
+      ],
+      "allowed_changes": [
+        "Small source adapter or pure function",
+        "Synthetic fixtures",
+        "Targeted tests and short runbook section"
+      ],
+      "acceptance": [
+        "One transaction with two candidate links counts once in candidate-only transaction coverage; relation counts stay distinct.",
+        "Approved proof and candidate-only and missing are exclusive transaction states, with a pinned denominator.",
+        "A bill or statement does not count as an approved proof of payment.",
+        "No real data is accessed, no original documents are moved, and no coverage counts or identities appear in Git diffs.",
+        "Existing evidence artifact schema remains unchanged or separately escalated before any incompatible change.",
+        "python -m pytest passes using only synthetic fixtures."
+      ],
+      "blocked_by": [],
+      "risk": "low",
+      "owner_gate": "Approve first Codex code-only pilot and isolated runner; do not dispatch solely from READY_FOR_REVIEW.",
+      "outcome": "A reviewable PR and a deterministic no-private-data frontier report function."
+    },
+    {
+      "id": "EV-002",
+      "state": "HOLD",
+      "priority": 2,
+      "repo": "matuteiglesias/accounting-doc-triage",
+      "trigger": "EV-001 accepted and a human reviewer reports candidate ambiguity or repeat handling.",
+      "goal": "Add idempotent candidate review decisions, explicit rejection reasons and no silent promotion to approved.",
+      "files_to_inspect": [
+        "src/accounting_doc_triage/evidence_artifact.py",
+        "src/accounting_doc_triage/matching.py",
+        "tests/test_matching_and_artifact.py"
+      ],
+      "allowed_changes": [
+        "Decision validation",
+        "Duplicate/ambiguity tests",
+        "Local reviewer-facing export using synthetic identifiers"
+      ],
+      "acceptance": [
+        "Each approved/rejected decision resolves exactly one previously observed candidate key and is replayable.",
+        "Conflicting decisions, stale candidate IDs and duplicate review rows fail closed.",
+        "Prior human rejections are not resurrected by new matching runs.",
+        "No document or ledger data is rewritten and no autonomous approval is introduced."
+      ],
+      "blocked_by": [
+        "EV-001"
+      ],
+      "risk": "medium",
+      "owner_gate": "Approve any semantics or contract changes before coding.",
+      "outcome": "Reviewer decisions persist in a reproducible approval layer without changing ledger truth."
+    },
+    {
+      "id": "EV-003",
+      "state": "HOLD",
+      "priority": 3,
+      "repo": "matuteiglesias/accounting-doc-triage",
+      "trigger": "The existing PM/MI cohort is verified and the owner approves one additional payer class/scope.",
+      "goal": "Parameterize the payer filter behind an explicit allowlist and support separately named payer populations without silently changing the old denominator.",
+      "files_to_inspect": [
+        "scripts/run_evidence_campaign.py",
+        "src/accounting_doc_triage/matching.py",
+        "src/accounting_doc_triage/evidence_artifact.py",
+        "tests/test_matching_and_artifact.py"
+      ],
+      "allowed_changes": [
+        "Explicit payer scope configuration",
+        "Per-payer coverage diagnostics",
+        "Synthetic multi-payer regression fixtures"
+      ],
+      "acceptance": [
+        "Old PM/MI fixture output is byte/semantic equivalent when the new option is not selected.",
+        "New cohort is opt-in and its population hash, count, payer aliases and periods are recorded.",
+        "Payer identity, who transferred, and legal obligor are separate fields where source supports them.",
+        "Cross-payer mirrored payments and shared proofs do not inflate document or transaction counts.",
+        "Unrecognized payer/alias or mixed scope fails closed; no inference of legal liability or occupancy."
+      ],
+      "blocked_by": [
+        "EV-001"
+      ],
+      "risk": "high",
+      "owner_gate": "Explicit approval of the new payer scope and denominator is mandatory; no real-file execution by Codex.",
+      "outcome": "One safe extension mechanism, not hard-coded payer-by-payer pipelines."
+    },
+    {
+      "id": "EV-004",
+      "state": "HOLD",
+      "priority": 4,
+      "repo": "matuteiglesias/accounting-doc-triage",
+      "trigger": "A reviewed false-positive or new bill source shows the need for differentiated document-kind handling.",
+      "goal": "Strengthen payment proof vs invoice/liability vs statement context classification and relation checks.",
+      "files_to_inspect": [
+        "src/accounting_doc_triage/interpretation/rules.py",
+        "src/accounting_doc_triage/matching.py",
+        "docs/CAPABILITY_LEDGER.md",
+        "tests/test_interpretation.py",
+        "tests/test_matching_and_artifact.py"
+      ],
+      "allowed_changes": [
+        "Document-kind inference guarded by explicit evidence features",
+        "Fixture tests",
+        "Candidate review reasons"
+      ],
+      "acceptance": [
+        "An unpaid tax bill cannot become payment_proof by matching amount/date alone.",
+        "A bank/card statement remains contextual unless direct proof criteria are validated.",
+        "A shared payment receipt can support multiple legitimate ledger legs without creating new facts.",
+        "Unknown document types remain candidates/review-needed rather than guessed approvals."
+      ],
+      "blocked_by": [
+        "EV-001"
+      ],
+      "risk": "medium",
+      "owner_gate": "Change of semantic interpretation requires explicit reviewer sign-off.",
+      "outcome": "Fewer false positives and better bill-to-payment traceability."
+    },
+    {
+      "id": "EV-005",
+      "state": "HOLD",
+      "priority": 5,
+      "repo": "matuteiglesias/accounting-doc-triage",
+      "trigger": "An explicit source-root and read-only inspection packet is approved and candidate-review capacity is available.",
+      "goal": "Design a bounded, allowlisted document search frontier with content-hash dedupe, source-cursor resume and no-result reporting.",
+      "files_to_inspect": [
+        "src/accounting_doc_triage/intake/custody.py",
+        "docs/runbook.md",
+        "AGENTS.md",
+        "tests/test_matching_and_artifact.py"
+      ],
+      "allowed_changes": [
+        "Synthetic adapter interface",
+        "Idempotent cursor/manifest schema",
+        "Tests for path containment and no-result runs"
+      ],
+      "acceptance": [
+        "No recursive global search or unexpected symlink escape; one approved root and budget per run.",
+        "Source bytes are never sent to a remote model by default.",
+        "Repeated search yields no duplicate evidence IDs or candidate keys.",
+        "Every investigated missing transaction records searched scope, timestamp, result and next step without leaking private IDs to public logs.",
+        "No APPLY/move/backups/delete and no real-source run in this PR."
+      ],
+      "blocked_by": [
+        "EV-001",
+        "A separate private-source authorization packet"
+      ],
+      "risk": "high",
+      "owner_gate": "Approve the exact private root/source and permitted search actions in a separate execution packet.",
+      "outcome": "An auditable source-search boundary, not a general crawler."
+    },
+    {
+      "id": "EV-006",
+      "state": "HOLD",
+      "priority": 6,
+      "repo": "matuteiglesias/accounting-workflows",
+      "trigger": "One reviewed new evidence snapshot exists for an approved canonical run.",
+      "goal": "Check exact-run snapshot/reporter compatibility and per-population cutoff/coverage semantics before making any public/private report.",
+      "files_to_inspect": [
+        "AGENTS.md",
+        "accounting/reports/payment_evidence.py",
+        "accounting/reports/private_bundle.py",
+        "tests/test_payment_evidence_report.py",
+        "tests/test_private_bundle.py"
+      ],
+      "allowed_changes": [
+        "Synthetic fixture regression",
+        "Validation diagnostics",
+        "Documentation of compatibility"
+      ],
+      "acceptance": [
+        "Snapshot source ledger SHA and required transaction population must match the selected canonical run.",
+        "Historical evidence cutoff is visible and not inherited from a newer unrelated accounting report.",
+        "Only operator-approved payment/transfer proofs are attached and allowlisted by hash.",
+        "No public bundle, latest pointer, live ingestion, or Viewer deployment is modified."
+      ],
+      "blocked_by": [
+        "EV-001",
+        "Approved candidate-review and new snapshot"
+      ],
+      "risk": "high",
+      "owner_gate": "Accounting owner approval for any cross-repo data contract change.",
+      "outcome": "Validated report pipeline; publication remains a separate action."
+    },
+    {
+      "id": "EV-007",
+      "state": "HOLD",
+      "priority": 7,
+      "repo": "matuteiglesias/accounting-doc-triage",
+      "trigger": "A real test failure, stale flow reference, dependency drift, or malformed artifact is detected.",
+      "goal": "Perform bounded hygiene: rerun fixture tests, fix one reproducible bug, reconcile legacy flow references; avoid speculative refactors.",
+      "files_to_inspect": [
+        "AGENTS.md",
+        "README.md",
+        "docs/runbook.md",
+        "docs/CAPABILITY_LEDGER.md",
+        "SYSTEM.yaml",
+        "Makefile"
+      ],
+      "allowed_changes": [
+        "Minimal bug fix",
+        "Tests",
+        "One updated reference and deprecation note"
+      ],
+      "acceptance": [
+        "Before/after failure is reproduced on synthetic fixtures.",
+        "No old PromptFlow runtime is revived and no new orchestration framework is introduced.",
+        "No broad lint/format rewrites or dependency modernization without a failing contract.",
+        "Status reports NO_OP if there is nothing broken or stale."
+      ],
+      "blocked_by": [],
+      "risk": "low",
+      "owner_gate": "Review changed behavior before merge.",
+      "outcome": "Less rework and maintenance debt, not growing a second workflow."
+    },
+    {
+      "id": "EV-008",
+      "state": "HOLD",
+      "priority": 8,
+      "repo": "matuteiglesias/accounting-viewer",
+      "trigger": "Accounting owner has approved a current evidence report bundle and a documented delivery/privacy policy.",
+      "goal": "Ensure the read-only Viewer discovers the evidence report in its Rendición chapter without changing report content or exposing private attachments prematurely.",
+      "files_to_inspect": [
+        "README.md",
+        "scripts/build_site.py",
+        "scripts/accept_site.py",
+        "tests/test_build_site.py"
+      ],
+      "allowed_changes": [
+        "Catalog-driven navigation copy",
+        "Fixture-only acceptance tests"
+      ],
+      "acceptance": [
+        "Report appears only when its approved catalog contains it.",
+        "All proof links and attachment hashes pass acceptance, without copying CSV/ledgers.",
+        "Mixed run/cutoff differences are visible and no old evidence snapshot masquerades as current.",
+        "No deployment or report-data mutation occurs inside the coding PR."
+      ],
+      "blocked_by": [
+        "EV-006",
+        "Approved attachment delivery/privacy decision"
+      ],
+      "risk": "high",
+      "owner_gate": "Publication and attachment exposure require explicit separate approval.",
+      "outcome": "A discoverable report without a second evidence engine."
+    }
+  ]
+}
